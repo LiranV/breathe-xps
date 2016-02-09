@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+#
+# Simulate breathing effect with keyboard backlight LEDs
+# Author: LiranV <https://github.com/LiranV>
+
+BRIGHTNESS_CTRL_FILE="/sys/class/leds/dell::kbd_backlight/brightness"
+LED_SEQUENCE_ARR=( 0 1 2 1 )
+DEFAULT_LED_STATE=0
+TRANSITION_DELAY=0.5
+
+# Restore LED state to initial state
+restore_led_state() {
+	echo -e "\nRestoring initial LED state."
+	echo "$initial_led_state" > "$BRIGHTNESS_CTRL_FILE"
+	exit 0
+}
+
+# Restore LED state after CTRL-C or SIGTERM
+trap restore_led_state SIGINT SIGTERM
+
+if [ ! -e "$BRIGHTNESS_CTRL_FILE" ]; then
+	echo "Error: LED brightness control file does not exist."
+	exit 1
+fi
+
+# Check for write permissions
+if [ ! -w "$BRIGHTNESS_CTRL_FILE" ]; then
+	echo "Error: You don't have write permissions for LED brightness control file."
+	echo "Try running this script with root permissions."
+	exit 1
+fi
+
+# Save initial state so it can be restored on exit
+initial_led_state="$(<$BRIGHTNESS_CTRL_FILE)"
+
+# Set default value in case of empty file
+if [ -z "$initial_led_state" ]; then
+	initial_led_state="$DEFAULT_LED_STATE"
+fi
+
+echo "Initial LED state: $initial_led_state"
+echo "Breathing..."
+while true; do
+	for brightness in "${LED_SEQUENCE_ARR[@]}"; do
+		echo "$brightness" > "$BRIGHTNESS_CTRL_FILE"
+		sleep "$TRANSITION_DELAY"
+	done
+done
